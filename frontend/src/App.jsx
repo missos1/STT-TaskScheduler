@@ -1,3 +1,10 @@
+import HomeScreen from './components/join/HomeScreen'
+
 export default function App() {
-  return <h1 className="text-3xl font-bold text-blue-600 p-6">Meeting Assistant</h1>
+  return (
+    <HomeScreen
+      onJoin={(code) => console.log('Vao hop:', code)}
+      onCreate={() => console.log('Tao cuoc hop moi')}
+    />
+  )
 }
