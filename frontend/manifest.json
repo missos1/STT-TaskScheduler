@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Meeting Assistant",
+  "version": "0.1.0",
+  "description": "Tro ly ghi chu cuoc hop",
+  "action": { "default_title": "Meeting Assistant" },
+  "side_panel": { "default_path": "sidepanel.html" },
+  "background": { "service_worker": "src/background.js", "type": "module" },
+  "permissions": ["sidePanel", "offscreen", "storage", "identity", "tabs"]
+}
