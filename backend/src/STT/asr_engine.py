@@ -100,15 +100,15 @@ class GipformerASRGPU:
         return stream.result.text.strip()
 
 
-# if __name__ == "__main__":
-#     load_dotenv()
+if __name__ == "__main__":
+    load_dotenv()
     
-#     hf_token = os.getenv("HF_TOKEN")
-#     # print(f"Hf token: {hf_token}\n")
+    hf_token = os.getenv("HF_TOKEN")
+    # print(f"Hf token: {hf_token}\n")
     
-#     asr = GipformerASRGPU(hf_token, version="1.5", quantize="fp32")
-#     result = asr.transcribe_timed("test.mp3")
-#     transcript_timed = GipformerASRGPU.format_timed(result) 
-#     print(f"Transcription: {transcript_timed}")
+    asr = GipformerASRGPU(hf_token, version="1.5", quantize="fp32")
+    result = asr.transcribe_timed("test.mp3")
+    transcript_timed = GipformerASRGPU.format_timed(result) 
+    print(f"Transcription: {transcript_timed}")
     
     
