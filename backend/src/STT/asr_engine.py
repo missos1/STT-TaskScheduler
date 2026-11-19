@@ -6,6 +6,7 @@ import numpy as np
 import soundfile as sf
 from dotenv import load_dotenv
 from huggingface_hub import hf_hub_download
+from typing import Optional
 
 # Register CUDA/cuDNN DLL directories for Windows
 # Fixes Error 126 (cublasLt64_12.dll missing) by ensuring the C++ dynamic loader
@@ -28,7 +29,7 @@ import sherpa_onnx
 class GipformerASRGPU:
     def __init__(
         self,
-        hf_token,
+        hf_token: Optional[str] = None,
         version: str = "1.5",
         quantize: str = "fp32",  # Standard FP32 is recommended for CUDA
         num_threads: int = 2,

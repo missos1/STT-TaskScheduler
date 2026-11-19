@@ -1,25 +1,22 @@
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Optional
 import json
 import uuid
 
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
-# Always store meeting.db inside backend/ regardless of where uvicorn is run from
-STATUS_ACTIVE = "active"
-STATUS_PROCESSING = "processing"
-STATUS_READY = "ready"
-STATUS_CLOSED = "closed"
+from .config import (
+    DATABASE_URL,
+    DB_PATH,
+    ROLE_PARTICIPANT,
+    SRC_VOICE,
+    STATUS_ACTIVE,
+    STATUS_READY,
+)
 
-SRC_VOICE = "voice"
-SRC_CHAT = "chat"
-
-ROLE_PARTICIPANT = "participant"
-ROLE_HOST = "host"
-
-DB_PATH = Path(__file__).resolve().parent.parent / "meeting.db"
-engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
+if DATABASE_URL.startswith("sqlite"):
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+engine = create_engine(DATABASE_URL, echo=False)
 
 class MeetingSession(SQLModel, table=True):
     session_id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
