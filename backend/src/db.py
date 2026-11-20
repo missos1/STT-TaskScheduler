@@ -50,7 +50,10 @@ class SessionParticipant(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     session_id: str = Field(foreign_key="meetingsession.session_id", index=True)
     user_id: str
-    role: str = Field(default="participant")
+    # Can de ghi ten nguoi noi vao transcript sau khi phien ket thuc, luc do
+    # ket noi WebSocket da dong va khong con biet ten nua.
+    user_name: Optional[str] = None
+    role: str = Field(default=ROLE_PARTICIPANT)
 
 def init_db() -> None:
     """Create all SQLite tables if they don't exist yet."""
@@ -167,3 +170,77 @@ def get_tasks(session_id: str) -> list[TaskEntry]:
             )
     with Session(engine) as db:
         return db.exec(query).all()
+
+
+def get_session(session_id: str) -> Optional[MeetingSession]:
+    with Session(engine) as db:
+        return db.get(MeetingSession, session_id)
+
+
+def get_latest_session_by_code(meet_code: str) -> Optional[MeetingSession]:
+    """Phien moi nhat cua mot ma Meet, bat ke trang thai.
+
+    Dung cho cac endpoint doc ket qua: nguoi dung mo lai side panel sau khi
+    phien da dong van phai xem duoc bien ban.
+    """
+    query = (
+        select(MeetingSession)
+        .where(MeetingSession.meet_code == meet_code)
+        .order_by(MeetingSession.created_at.desc())
+    )
+    with Session(engine) as db:
+        return db.exec(query).first()
+
+
+def upsert_participant(
+    session_id: str,
+    user_id: str,
+    user_name: Optional[str] = None,
+    role: str = ROLE_PARTICIPANT,
+) -> SessionParticipant:
+    """Ghi nhan mot nguoi tham gia; goi lai thi cap nhat ten/vai tro."""
+    query = select(SessionParticipant).where(
+        SessionParticipant.session_id == session_id,
+        SessionParticipant.user_id == user_id,
+    )
+    with Session(engine) as db:
+        row = db.exec(query).first()
+        if row is not None:
+            if user_name:
+                row.user_name = user_name
+            if role:
+                row.role = role
+        else:
+            row = SessionParticipant(
+                session_id=session_id, user_id=user_id, user_name=user_name, role=role
+            )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+        return row
+
+
+def get_participants(session_id: str) -> list[SessionParticipant]:
+    query = select(SessionParticipant).where(SessionParticipant.session_id == session_id)
+    with Session(engine) as db:
+        return db.exec(query).all()
+
+
+def get_task(task_id: int) -> Optional[TaskEntry]:
+    with Session(engine) as db:
+        return db.get(TaskEntry, task_id)
+
+
+def update_task(task_id: int, **fields) -> Optional[TaskEntry]:
+    """Cap nhat mot task; bo qua cac truong None."""
+    with Session(engine) as db:
+        task = db.get(TaskEntry, task_id)
+        if task is None:
+            return None
+        for key, value in fields.items():
+            if value is not None and hasattr(task, key):
+                setattr(task, key, value)
+        db.add(task)
+        db.commit()
+        db.refresh(task)
+        return task

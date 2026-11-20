@@ -1,0 +1,15 @@
+# Backend dependencies.
+# Chay:  cd backend && python -m venv .venv && .venv\Scripts\pip install -r requirements.txt
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-dotenv==1.0.1
+sqlmodel==0.0.22
+openai>=1.60
+numpy>=1.26
+
+# STT chay local. sherpa-onnx can GPU (CUDA) de dat toc do; khong co thi
+# van chay CPU nhung cham hon nhieu (dat ASR_PROVIDER=cpu trong .env).
+sherpa-onnx>=1.12
+soundfile>=0.12
+huggingface-hub>=0.27
