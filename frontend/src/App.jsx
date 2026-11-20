@@ -4,9 +4,13 @@ import PreJoinScreen from './components/join/PreJoinScreen'
 import WaitingRoom from './components/join/WaitingRoom'
 import CreateMeeting from './components/host/CreateMeeting'
 import HostWaitingRoom from './components/host/HostWaitingRoom'
+import MeetingResultPanel from './components/summary/MeetingResultPanel'
 
 export default function App() {
-  const [screen, setScreen] = useState('home')
+  const [screen, setScreen] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('demo') === 'summary' ? 'summary' : 'home'
+  })
 
   switch (screen) {
     case 'prejoin':
@@ -27,6 +31,14 @@ export default function App() {
           onWait={() => {}}
         />
       )
+
+      case 'summary':
+        return (
+          <div className="mx-auto h-screen w-[400px] border-x border-line">
+            <MeetingResultPanel meetCode="abc-defg-hij" />
+          </div>
+        )
+        
     default:
       return <HomeScreen onJoin={() => setScreen('prejoin')} onCreate={() => setScreen('create')} />
   }
