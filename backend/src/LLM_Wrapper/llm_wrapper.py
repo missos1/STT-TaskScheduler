@@ -76,6 +76,10 @@ class LLMWrapper:
         self.client = OpenAI(
             base_url=model_base_url or os.getenv("LLM_BASE_URL"),
             api_key=api_key or os.getenv("LLM_API_KEY"),
+            # Khong co timeout thi mot request treo se giu pipeline vo han va
+            # side panel quay mai. Loi 503 cung se duoc thu lai ngan gon.
+            timeout=float(os.getenv("LLM_TIMEOUT_SEC") or 60),
+            max_retries=int(os.getenv("LLM_MAX_RETRIES") or 1),
         )
         self.model = model or os.getenv("LLM_MODEL")
 

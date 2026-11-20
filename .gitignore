@@ -3,6 +3,10 @@
 .env.*
 !.env.example
 
+# Du lieu sinh ra khi chay backend (audio tam + SQLite)
+backend/data/
+backend/database/
+
 # Python
 __pycache__/
 *.py[cod]

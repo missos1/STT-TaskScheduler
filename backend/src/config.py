@@ -6,6 +6,8 @@ import os
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 ENV_PATH = BACKEND_DIR / ".env"
 DB_PATH = BACKEND_DIR / "database" / "meeting.db"
+# Noi luu audio tam cua tung nguoi, moi phien mot thu muc con.
+AUDIO_DIR = BACKEND_DIR / "data" / "audio"
 # Load backend/.env once for all modules
 load_dotenv(ENV_PATH)
 DATABASE_URL = os.getenv("DATABASE_URL") or f"sqlite:///{DB_PATH}"
