@@ -6,5 +6,8 @@
   "action": { "default_title": "Meeting Assistant" },
   "side_panel": { "default_path": "sidepanel.html" },
   "background": { "service_worker": "src/background.js", "type": "module" },
-  "permissions": ["sidePanel", "offscreen", "storage", "identity", "tabs"]
+  "permissions": ["sidePanel", "offscreen", "storage", "identity", "tabs"],
+  "web_accessible_resources": [
+  { "resources": ["mic-permission.html", "pcm-worklet.js"], "matches": ["<all_urls>"] }
+]
 }

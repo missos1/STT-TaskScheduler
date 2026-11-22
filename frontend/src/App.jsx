@@ -13,20 +13,39 @@ export default function App() {
     return params.get('demo') === 'summary' ? 'summary' : 'home'
   })
   const [isHost, setIsHost] = useState(false)
+  const [deviceId, setDeviceId] = useState('')
 
   switch (screen) {
     case 'prejoin':
-      return <PreJoinScreen onBack={() => setScreen('home')} onEnter={() => { setIsHost(false); setScreen('waiting') }} />
+      return (
+        <PreJoinScreen
+          onBack={() => setScreen('home')}
+          onEnter={(info) => {
+            setDeviceId(info.deviceId)
+            setIsHost(false)
+            setScreen('waiting')
+          }}
+        />
+      )
     case 'waiting':
       return <WaitingRoom onLeave={() => setScreen('home')} onDemoStart={() => setScreen('recording')} />
     case 'create':
-      return <CreateMeeting onBack={() => setScreen('home')} onOpenRoom={() => { setIsHost(true); setScreen('hostwait') }} />
+      return (
+        <CreateMeeting
+          onBack={() => setScreen('home')}
+          onOpenRoom={() => {
+            setIsHost(true)
+            setScreen('hostwait')
+          }}
+        />
+      )
     case 'hostwait':
       return <HostWaitingRoom onStart={() => setScreen('recording')} onWait={() => {}} />
     case 'recording':
       return (
         <RecordingScreen
           isHost={isHost}
+          deviceId={deviceId}
           onStop={() => setScreen('summary')}
           onLeave={() => setScreen('home')}
         />

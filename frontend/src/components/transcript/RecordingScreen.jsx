@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import useRecorder from '../../hooks/useRecorder'
 
 const MOCK_LINES = [
   { id: 1, speaker: 'An', text: 'Tuần này Hoàng làm giao diện đăng nhập nhé, thứ Sáu demo cho cả nhóm.', time: '02:15' },
@@ -13,21 +14,31 @@ const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 
 export default function RecordingScreen({
   title = 'Họp đồ án – Sprint 2',
   isHost = false,
+  deviceId = '',
   onStop,
   onLeave,
 }) {
   const [seconds, setSeconds] = useState(0)
   const [lines, setLines] = useState([])
-  const [micOn, setMicOn] = useState(true)
+  const [bytes, setBytes] = useState(0)
   const endRef = useRef(null)
 
-  // Đồng hồ
+  const { recording, error, start, stop } = useRecorder({
+    deviceId,
+    onChunk: (buf) => setBytes((b) => b + buf.byteLength), // sau này: gửi WebSocket ở đây
+  })
+
+  // Tự bật thu khi vào màn, tắt khi rời màn
+  useEffect(() => {
+    start()
+    return () => stop()
+  }, []) // eslint-disable-line
+
   useEffect(() => {
     const t = setInterval(() => setSeconds((s) => s + 1), 1000)
     return () => clearInterval(t)
   }, [])
 
-  // Lời thoại giả hiện dần mỗi 3 giây
   useEffect(() => {
     let i = 0
     const t = setInterval(() => {
@@ -38,7 +49,6 @@ export default function RecordingScreen({
     return () => clearInterval(t)
   }, [])
 
-  // Tự cuộn xuống dòng mới nhất
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [lines])
@@ -51,6 +61,9 @@ export default function RecordingScreen({
           <p className="flex items-center gap-2 text-sm text-stone-500">
             <span className="h-2 w-2 animate-pulse rounded-full bg-red-600" />
             Đang ghi {fmt(seconds)}
+          </p>
+          <p className="text-xs text-stone-400">
+            {error ? `Lỗi mic: ${error}` : recording ? `Đã thu ${(bytes / 1024).toFixed(0)} KB` : 'Chưa thu'}
           </p>
         </div>
         {isHost ? (
@@ -66,11 +79,11 @@ export default function RecordingScreen({
 
       <div className="flex items-center justify-between px-4 py-2 text-sm">
         <span className="flex items-center gap-2">
-          <span className={`h-2.5 w-2.5 rounded-full ${micOn ? 'bg-emerald-700' : 'bg-stone-400'}`} />
-          {micOn ? 'Mic đang bật' : 'Mic đang tắt'}
+          <span className={`h-2.5 w-2.5 rounded-full ${recording ? 'bg-emerald-700' : 'bg-stone-400'}`} />
+          {recording ? 'Mic đang bật' : 'Mic đang tắt'}
         </span>
-        <button onClick={() => setMicOn(!micOn)} className="text-blue-900 underline">
-          {micOn ? 'Tắt mic' : 'Bật mic'}
+        <button onClick={recording ? stop : start} className="text-blue-900 underline">
+          {recording ? 'Tắt mic' : 'Bật mic'}
         </button>
       </div>
 
