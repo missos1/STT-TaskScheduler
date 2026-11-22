@@ -17,6 +17,7 @@ import re
 import secrets
 import time
 import wave
+from datetime import datetime
 from typing import Dict, Optional
 
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
@@ -68,12 +69,14 @@ _CHECK_STATUS = {
 class _Peer:
     """Mot nguoi dang gui audio: WebSocket + file WAV dang ghi."""
 
-    def __init__(self, session_id: str, user_id: str):
-        self.session_id = session_id
+    def __init__(self, session, user_id: str):
+        self.session_id = session.session_id
         self.user_id = user_id
         self.ws: Optional[WebSocket] = None
+        self._session_epoch = _iso_to_epoch(session.created_at)
+        self._first_frame_at: Optional[float] = None
 
-        folder = AUDIO_DIR / session_id
+        folder = AUDIO_DIR / self.session_id
         folder.mkdir(parents=True, exist_ok=True)
         self.path = folder / f"{user_id}.wav"
         self._wav = wave.open(str(self.path), "wb")
@@ -82,6 +85,16 @@ class _Peer:
         self._wav.setframerate(SAMPLE_RATE)
 
     def write(self, pcm: bytes) -> None:
+        # Frame dau tien danh dau luc nguoi nay bat dau duoc ghi. Phai luu lai:
+        # nguoi vao muon co file WAV bat dau tre hon, khong cong offset nay thi
+        # moi cau cua ho se bi danh dau som hon thuc te.
+        if self._first_frame_at is None:
+            self._first_frame_at = time.time()
+            db.set_participant_start_offset(
+                self.session_id,
+                self.user_id,
+                max(0.0, (self._first_frame_at - self._session_epoch) * 1000),
+            )
         self._wav.writeframes(pcm)
 
     def close(self) -> None:
@@ -122,6 +135,13 @@ class ConfirmTasksRequest(BaseModel):
 
 
 # ------------------------------------------------------------------ helpers
+def _iso_to_epoch(iso: str) -> float:
+    try:
+        return datetime.fromisoformat(iso).timestamp()
+    except (TypeError, ValueError):
+        return time.time()
+
+
 def _require_meet_code(meet_code: str) -> str:
     code = (meet_code or "").strip().lower()
     if not CODE_RE.match(code):
@@ -356,7 +376,7 @@ async def ws_meet(
         return
 
     db.upsert_participant(session.session_id, user_id, user_name)
-    peer = _Peer(session.session_id, user_id)
+    peer = _Peer(session, user_id)
     peer.ws = websocket
     _peers.setdefault(session.session_id, {})[user_id] = peer
     log.info("Nhận audio: %s (%s) vào %s", user_name, user_id, code)

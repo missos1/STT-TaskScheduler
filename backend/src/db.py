@@ -53,6 +53,10 @@ class SessionParticipant(SQLModel, table=True):
     # Can de ghi ten nguoi noi vao transcript sau khi phien ket thuc, luc do
     # ket noi WebSocket da dong va khong con biet ten nua.
     user_name: Optional[str] = None
+    # Thoi diem (ms, tinh tu luc tao phong) nhan duoc frame audio dau tien.
+    # Nguoi vao muon thi file WAV cua ho bat dau tre hon; neu khong cong offset
+    # nay, moi cau cua ho se bi danh dau som hon thuc te.
+    start_offset_ms: float = Field(default=0.0)
     role: str = Field(default=ROLE_PARTICIPANT)
 
 def init_db() -> None:
@@ -224,6 +228,25 @@ def get_participants(session_id: str) -> list[SessionParticipant]:
     query = select(SessionParticipant).where(SessionParticipant.session_id == session_id)
     with Session(engine) as db:
         return db.exec(query).all()
+
+
+def set_participant_start_offset(
+    session_id: str, user_id: str, offset_ms: float
+) -> None:
+    """Ghi thoi diem nhan frame audio dau tien cua mot nguoi.
+
+    Goi mot lan khi frame dau tien den; cac frame sau khong dung toi DB.
+    """
+    query = select(SessionParticipant).where(
+        SessionParticipant.session_id == session_id,
+        SessionParticipant.user_id == user_id,
+    )
+    with Session(engine) as db:
+        row = db.exec(query).first()
+        if row is not None:
+            row.start_offset_ms = offset_ms
+            db.add(row)
+            db.commit()
 
 
 def get_task(task_id: int) -> Optional[TaskEntry]:

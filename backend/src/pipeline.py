@@ -174,6 +174,10 @@ def process_session(session_id: str) -> None:
                     notes.append(f"Bỏ qua {participant.user_id}: tần số {rate} Hz.")
                     continue
 
+                # File WAV cua nguoi vao muon bat dau tre hon luc tao phong,
+                # nen phai cong offset luc nhan frame dau tien.
+                offset_ms = getattr(participant, "start_offset_ms", 0.0) or 0.0
+
                 for start, _end, chunk in split_speech(samples):
                     text = asr.transcribe(chunk, sample_rate=SAMPLE_RATE)
                     if not text:
@@ -182,7 +186,7 @@ def process_session(session_id: str) -> None:
                         session_id=session_id,
                         user_id=participant.user_id,
                         user_name=participant.user_name or participant.user_id,
-                        timestamp_ms=started_ms + start * 1000,
+                        timestamp_ms=started_ms + offset_ms + start * 1000,
                         text=text,
                         source=SRC_VOICE,
                     )
