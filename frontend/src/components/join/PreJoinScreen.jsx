@@ -1,6 +1,5 @@
 import { useState } from 'react'
-
-const MICS = ['Tai nghe USB', 'Micro máy tính (mặc định)']
+import useMic from '../../hooks/useMic'
 
 export default function PreJoinScreen({
   meeting = { title: 'Họp đồ án – Sprint 2', host: 'An', joined: ['Đức'], waiting: ['Hoàng', 'Trung'] },
@@ -9,10 +8,10 @@ export default function PreJoinScreen({
   onEnter,
 }) {
   const [name, setName] = useState(defaultName)
-  const [mic, setMic] = useState(MICS[0])
   const [agree, setAgree] = useState(false)
+  const { status, devices, deviceId, setDeviceId, level, openPermissionTab } = useMic()
 
-  const canEnter = name.trim() && agree
+  const canEnter = name.trim() && agree && status === 'granted'
 
   return (
     <div className="flex min-h-screen flex-col bg-stone-50 p-6 text-stone-900">
@@ -34,22 +33,33 @@ export default function PreJoinScreen({
       />
 
       <label className="mt-4 text-sm text-stone-500">Micro</label>
-      <select
-        value={mic}
-        onChange={(e) => setMic(e.target.value)}
-        className="mt-1 rounded-lg border border-stone-300 bg-white px-4 py-3"
-      >
-        {MICS.map((m) => (
-          <option key={m}>{m}</option>
-        ))}
-      </select>
+      {status === 'granted' ? (
+        <select
+          value={deviceId}
+          onChange={(e) => setDeviceId(e.target.value)}
+          className="mt-1 rounded-lg border border-stone-300 bg-white px-4 py-3"
+        >
+          {devices.map((d) => (
+            <option key={d.deviceId} value={d.deviceId}>
+              {d.label || 'Micro'}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <button
+          onClick={openPermissionTab}
+          className="mt-1 rounded-lg border border-stone-300 bg-white px-4 py-3 text-left text-blue-900 underline"
+        >
+          {status === 'denied' ? 'Micro bị chặn. Bấm để thử cấp lại' : 'Bấm để cấp quyền micro'}
+        </button>
+      )}
 
       <div className="mt-3 flex items-center gap-3 text-sm">
         <span className="text-stone-500">Thử nói một câu</span>
         <div className="h-2 flex-1 rounded bg-stone-200">
-          <div className="h-2 w-1/2 rounded bg-emerald-700" />
+          <div className="h-2 rounded bg-emerald-700 transition-all" style={{ width: `${level * 100}%` }} />
         </div>
-        <span className="font-medium text-emerald-700">Nghe rõ</span>
+        <span className="font-medium text-emerald-700">{level > 0.15 ? 'Nghe rõ' : 'Chưa nghe thấy'}</span>
       </div>
       <p className="mt-2 text-sm text-stone-500">
         Nên đeo tai nghe. Nếu bật loa ngoài, mic của bạn sẽ thu luôn giọng người khác.
@@ -65,7 +75,7 @@ export default function PreJoinScreen({
       </label>
 
       <button
-        onClick={() => onEnter?.({ name, mic })}
+        onClick={() => onEnter?.({ name, deviceId })}
         disabled={!canEnter}
         className="mt-auto rounded-lg bg-blue-900 py-3 font-semibold text-white disabled:opacity-40"
       >
