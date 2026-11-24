@@ -1,7 +1,6 @@
-// Fake GET /api/rooms/{meet_code}/summary response (status "ready").
-// Shape follows api_contract_and_roadmap.md §3.6 exactly.
+// Fake GET /api/rooms/{session_id}/summary response (status "ready").
 export const MOCK_SUMMARY = {
-  meet_code: 'abc-defg-hij',
+  session_id: 'f89c1282-c45d-45b7-b3fe-1c098aa0f1c3',
   status: 'ready',
   meeting_time_iso: '2026-11-19T09:00:00+07:00',
   summary:
@@ -46,9 +45,9 @@ export const MOCK_SUMMARY = {
   ],
 }
 
-// Same room while the LLM is still working (§3.6, first response).
+// Same room while the LLM is still working (first response).
 export const MOCK_SUMMARY_PROCESSING = {
-  meet_code: 'abc-defg-hij',
+  session_id: 'f89c1282-c45d-45b7-b3fe-1c098aa0f1c3',
   status: 'processing',
   summary: null,
   decisions: [],

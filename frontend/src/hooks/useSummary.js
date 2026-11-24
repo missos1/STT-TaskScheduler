@@ -9,20 +9,20 @@ import { getSummary } from '../services/summaryApi'
  *   error - error message string, or null
  *   retry - call to start polling again after an error
  */
-export function useSummary(meetCode) {
+export function useSummary(sessionId) {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
   const [attempt, setAttempt] = useState(0) // bump to restart the effect
  
   useEffect(() => {
-    if (!meetCode) return undefined
+    if (!sessionId) return undefined
  
     let cancelled = false // set when the component unmounts
     let timerId = null
  
     async function poll() {
       try {
-        const result = await getSummary(meetCode)
+        const result = await getSummary(sessionId)
         if (cancelled) return
         setData(result)
         setError(null)
@@ -37,12 +37,12 @@ export function useSummary(meetCode) {
  
     poll()
  
-    // Cleanup: stop polling when meetCode changes or the panel closes.
+    // Cleanup: stop polling when sessionId changes or the panel closes.
     return () => {
       cancelled = true
       clearTimeout(timerId)
     }
-  }, [meetCode, attempt])
+  }, [sessionId, attempt])
  
   const retry = () => {
     setError(null)

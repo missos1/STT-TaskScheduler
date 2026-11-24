@@ -34,6 +34,7 @@ export default function TaskEditForm({ task, onSave, onCancel, meetingTimeIso })
       assignee: assignee.trim() || null, // empty -> "unknown" like the API
       // Untouched date -> keep the server's exact ISO string (and its offset).
       due_date_iso: chosenDueIso,
+      priority: priority
     })
   }
 

@@ -20,10 +20,10 @@ function formatMeetingTime(iso) {
  
 /**
  * Side-panel screen after the room is closed: summary + task review.
- * Props: meetCode (Google Meet code, e.g. "abc-defg-hij")
+ * Props: sessionId (UUID of the meeting session)
  */
-export default function MeetingResultPanel({ meetCode }) {
-  const { data, error, retry } = useSummary(meetCode)
+export default function MeetingResultPanel({ sessionId }) {
+  const { data, error, retry } = useSummary(sessionId)
   const [tab, setTab] = useState('summary')
  
   const isReady = data?.status === 'ready' && !error
@@ -33,7 +33,7 @@ export default function MeetingResultPanel({ meetCode }) {
       <header className="flex flex-col gap-1 px-5 pt-4">
         <h1 className="text-base font-semibold">Kết quả cuộc họp</h1>
         <p className="text-[13px] text-muted">
-          {meetCode}
+          {sessionId}
           {data?.meeting_time_iso && ` · họp lúc ${formatMeetingTime(data.meeting_time_iso)}`}
         </p>
  
@@ -71,7 +71,7 @@ export default function MeetingResultPanel({ meetCode }) {
           </div>
           <div hidden={tab !== 'tasks'}>
             <TaskList
-              meetCode={meetCode}
+              sessionId={sessionId}
               initialTasks={data.tasks}
               meetingTimeIso={data.meeting_time_iso}
             />

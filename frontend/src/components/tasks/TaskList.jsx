@@ -18,9 +18,9 @@ function toLocalTask(task) {
  
 /**
  * Review list for the draft tasks returned by GET /summary.
- * Props: meetCode, initialTasks (TaskItem[] from the API)
+ * Props: sessionId, initialTasks (TaskItem[] from the API)
  */
-export default function TaskList({ meetCode, initialTasks, meetingTimeIso }) {
+export default function TaskList({ sessionId, initialTasks, meetingTimeIso }) {
   const [tasks, setTasks] = useState(() => initialTasks.map(toLocalTask))
   const [editingId, setEditingId] = useState(null)
   const [validationErrors, setValidationErrors] = useState({})
@@ -99,7 +99,7 @@ function handleSave(id, fields) {
       </ul>
       
       <SendTasksBar
-        meetCode={meetCode}
+        sessionId={sessionId}
         tasks={readyToSend}
         pendingCount={pendingCount}
         onSent={handleSent}
