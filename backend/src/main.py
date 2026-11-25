@@ -27,6 +27,7 @@ from pydantic import BaseModel
 from . import db, pipeline
 from .config import (
     AUDIO_DIR,
+    ROLE_HOST,
     STATUS_ACTIVE,
     STATUS_CLOSED,
     STATUS_PROCESSING,
@@ -49,7 +50,6 @@ app.add_middleware(
 
 SAMPLE_RATE = 16000
 FRAME_HEADER = 8  # float64 timestamp ms, little-endian
-CODE_RE = re.compile(r"^[a-z]{3}-[a-z]{4}-[a-z]{3}$")
 TASK_ID_RE = re.compile(r"^task_(\d+)$")
 
 # Ket noi dang song theo phien: session_id -> user_id -> _Peer
@@ -112,12 +112,15 @@ def _spawn(coro) -> None:
 
 # ------------------------------------------------------------------- models
 class CreateRoomRequest(BaseModel):
-    meet_code: str
     host_name: str
 
 
+class JoinRoomRequest(BaseModel):
+    user_name: str
+    user_id: Optional[str] = None
+
+
 class CloseRoomRequest(BaseModel):
-    meet_code: str
     host_token: str
 
 
@@ -140,18 +143,6 @@ def _iso_to_epoch(iso: str) -> float:
         return datetime.fromisoformat(iso).timestamp()
     except (TypeError, ValueError):
         return time.time()
-
-
-def _require_meet_code(meet_code: str) -> str:
-    code = (meet_code or "").strip().lower()
-    if not CODE_RE.match(code):
-        raise HTTPException(400, "Mã phòng phải có dạng abc-defg-hij")
-    return code
-
-
-def _resolve_session(meet_code: str):
-    """Uu tien phien dang hoat dong, khong co thi lay phien moi nhat."""
-    return db.get_active_session_by_code(meet_code) or db.get_latest_session_by_code(meet_code)
 
 
 def _task_id_to_int(task_id: str) -> int:
@@ -183,6 +174,14 @@ def _serialize_entry(entry) -> dict:
     }
 
 
+def _serialize_participant(participant) -> dict:
+    return {
+        "user_id": participant.user_id,
+        "user_name": participant.user_name,
+        "role": participant.role,
+    }
+
+
 # --------------------------------------------------------------------- API
 @app.get("/health")
 def health_check():
@@ -195,45 +194,76 @@ def health_check():
 
 @app.post("/api/rooms/create", status_code=201)
 def create_room(payload: CreateRoomRequest):
-    code = _require_meet_code(payload.meet_code)
-
-    if db.get_active_session_by_code(code):
-        raise HTTPException(409, "Room is already active")
+    host_name = (payload.host_name or "").strip()
+    if not host_name:
+        raise HTTPException(400, "host_name is required")
 
     session = db.create_session(
-        meet_code=code,
-        host_name=payload.host_name,
+        host_name=host_name,
         host_token=secrets.token_urlsafe(16),
     )
-    log.info("Tạo phòng %s (session %s)", code, session.session_id)
+    host_user_id = secrets.token_hex(4)
+    db.upsert_participant(session.session_id, host_user_id, host_name, role=ROLE_HOST)
+    log.info("Tạo phòng session %s (host %s)", session.session_id, host_name)
 
     return {
-        "meet_code": code,
         "session_id": session.session_id,
         "status": STATUS_ACTIVE,
         "host_token": session.host_token,
+        "host_user_id": host_user_id,
     }
 
 
-@app.get("/api/rooms/check/{meet_code}")
-def check_room(meet_code: str):
+@app.get("/api/rooms/{session_id}")
+def check_room(session_id: str):
     """Luôn 200 để side panel polling mà không thấy lỗi đỏ trong Console."""
-    code = (meet_code or "").strip().lower()
-    session = _resolve_session(code)
+    sid = (session_id or "").strip()
+    session = db.get_session(sid)
     if session is None:
-        return {"meet_code": code, "active": False, "status": "not_created"}
+        return {"session_id": sid, "active": False, "status": "not_created"}
 
     return {
-        "meet_code": code,
+        "session_id": session.session_id,
         "active": session.status == STATUS_ACTIVE,
         "status": _CHECK_STATUS.get(session.status, session.status),
+        "host_name": session.host_name,
+        "participants": [
+            _serialize_participant(p) for p in db.get_participants(session.session_id)
+        ],
     }
 
 
-@app.post("/api/rooms/close", status_code=200)
-async def close_room(payload: CloseRoomRequest):
-    code = _require_meet_code(payload.meet_code)
-    session = _resolve_session(code)
+@app.post("/api/rooms/{session_id}/join")
+def join_room(session_id: str, payload: JoinRoomRequest):
+    sid = (session_id or "").strip()
+    session = db.get_session(sid)
+    if session is None:
+        raise HTTPException(404, "Room not found")
+    if session.status != STATUS_ACTIVE:
+        raise HTTPException(409, "Room is not active")
+
+    user_name = (payload.user_name or "").strip()
+    if not user_name:
+        raise HTTPException(400, "user_name is required")
+
+    user_id = (payload.user_id or "").strip() or secrets.token_hex(4)
+    db.upsert_participant(session.session_id, user_id, user_name)
+
+    return {
+        "session_id": session.session_id,
+        "user_id": user_id,
+        "user_name": user_name,
+        "status": session.status,
+        "participants": [
+            _serialize_participant(p) for p in db.get_participants(session.session_id)
+        ],
+    }
+
+
+@app.post("/api/rooms/{session_id}/close", status_code=200)
+async def close_room(session_id: str, payload: CloseRoomRequest):
+    sid = (session_id or "").strip()
+    session = db.get_session(sid)
     if session is None:
         raise HTTPException(404, "Room not found")
 
@@ -247,13 +277,13 @@ async def close_room(payload: CloseRoomRequest):
 
     db.update_session_status(session.session_id, STATUS_PROCESSING)
     await _close_peers(session.session_id)
-    log.info("Đóng phòng %s, bắt đầu tổng hợp", code)
+    log.info("Đóng phòng %s, bắt đầu tổng hợp", session.session_id)
 
     # Pipeline chay o thread rieng: model STT/LLM la thu vien dong bo, chay
     # trong event loop se chan toan bo server.
     _spawn(asyncio.to_thread(_run_pipeline, session.session_id))
 
-    return {"meet_code": code, "status": STATUS_PROCESSING}
+    return {"session_id": session.session_id, "status": STATUS_PROCESSING}
 
 
 def _run_pipeline(session_id: str) -> None:
@@ -266,32 +296,32 @@ def _run_pipeline(session_id: str) -> None:
         )
 
 
-@app.get("/api/rooms/{meet_code}/transcript")
-def get_transcript(meet_code: str):
-    code = (meet_code or "").strip().lower()
-    session = _resolve_session(code)
+@app.get("/api/rooms/{session_id}/transcript")
+def get_transcript(session_id: str):
+    sid = (session_id or "").strip()
+    session = db.get_session(sid)
     if session is None:
         raise HTTPException(404, "Room not found")
 
     entries = db.get_transcript(session.session_id)
     return {
-        "meet_code": code,
+        "session_id": session.session_id,
         "status": _CHECK_STATUS.get(session.status, session.status),
         "transcript": [_serialize_entry(entry) for entry in entries],
     }
 
 
-@app.get("/api/rooms/{meet_code}/summary")
-def get_summary(meet_code: str):
-    code = (meet_code or "").strip().lower()
-    session = _resolve_session(code)
+@app.get("/api/rooms/{session_id}/summary")
+def get_summary(session_id: str):
+    sid = (session_id or "").strip()
+    session = db.get_session(sid)
     if session is None:
         raise HTTPException(404, "Room not found")
 
     if session.status != STATUS_READY:
         # Side panel dua vao status nay de biet con phai hoi tiep hay khong.
         return {
-            "meet_code": code,
+            "session_id": session.session_id,
             "status": STATUS_PROCESSING,
             "summary": None,
             "decisions": [],
@@ -299,7 +329,7 @@ def get_summary(meet_code: str):
         }
 
     return {
-        "meet_code": code,
+        "session_id": session.session_id,
         "status": STATUS_READY,
         "meeting_time_iso": session.created_at,
         "summary": session.summary or "",
@@ -316,10 +346,10 @@ def _load_decisions(raw: str) -> list[str]:
         return []
 
 
-@app.post("/api/rooms/{meet_code}/tasks/confirm")
-def confirm_tasks(meet_code: str, payload: ConfirmTasksRequest):
-    code = (meet_code or "").strip().lower()
-    session = _resolve_session(code)
+@app.post("/api/rooms/{session_id}/tasks/confirm")
+def confirm_tasks(session_id: str, payload: ConfirmTasksRequest):
+    sid = (session_id or "").strip()
+    session = db.get_session(sid)
     if session is None:
         raise HTTPException(404, "Room not found")
 
@@ -328,12 +358,15 @@ def confirm_tasks(meet_code: str, payload: ConfirmTasksRequest):
 
     for incoming in payload.tasks:
         task_id = _task_id_to_int(incoming.id)
+        fields = incoming.model_dump(exclude_unset=True, exclude={"id"})
+        
+        for required in ("task_description", "priority"):
+            if fields.get(required) is None:
+                fields.pop(required, None)
+        
         updated = db.update_task(
             task_id,
-            task_description=incoming.task_description,
-            assignee=incoming.assignee,
-            due_date_iso=incoming.due_date_iso,
-            priority=incoming.priority,
+            **fields,
             status=TASK_STATUS_CONFIRMED,
         )
         if updated is None:
@@ -352,25 +385,25 @@ def confirm_tasks(meet_code: str, payload: ConfirmTasksRequest):
                 {"task_id": incoming.id, "target": target, "status": "not_configured"}
             )
 
-    return {"meet_code": code, "synced_count": confirmed, "results": results}
+    return {"session_id": session.session_id, "synced_count": confirmed, "results": results}
 
 
 # ----------------------------------------------------------------- WebSocket
-@app.websocket("/ws/meet/{meet_code}")
+@app.websocket("/ws/meet/{session_id}")
 async def ws_meet(
     websocket: WebSocket,
-    meet_code: str,
+    session_id: str,
     user_id: str = Query("", alias="user_id"),
     user_name: str = Query("", alias="user_name"),
 ):
-    code = (meet_code or "").strip().lower()
+    sid = (session_id or "").strip()
     user_id = user_id or secrets.token_hex(4)
     user_name = user_name or user_id
 
     await websocket.accept()
 
-    session = db.get_active_session_by_code(code)
-    if session is None:
+    session = db.get_session(sid)
+    if session is None or session.status != STATUS_ACTIVE:
         await websocket.send_json({"type": "error", "message": "Room is not active"})
         await websocket.close(code=4001)
         return
@@ -379,7 +412,7 @@ async def ws_meet(
     peer = _Peer(session, user_id)
     peer.ws = websocket
     _peers.setdefault(session.session_id, {})[user_id] = peer
-    log.info("Nhận audio: %s (%s) vào %s", user_name, user_id, code)
+    log.info("Nhận audio: %s (%s) vào %s", user_name, user_id, session.session_id)
 
     try:
         while True:
@@ -436,7 +469,7 @@ async def _close_peers(session_id: str) -> None:
     for peer in list(_peers.get(session_id, {}).values()):
         try:
             if peer.ws is not None:
-                await peer.ws.send_json({"type": "room_closed", "meet_code": session_id})
+                await peer.ws.send_json({"type": "room_closed", "session_id": session_id})
                 await peer.ws.close(code=4000)
         except Exception:  # noqa: BLE001
             pass

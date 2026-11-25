@@ -23,33 +23,33 @@ function wait(ms) {
 let mockSummaryCalls = 0
 
 /**
- * GET /api/rooms/{meet_code}/summary  (contract §3.6)
- * Returns { meet_code, status, meeting_time_iso?, summary, decisions[], tasks[] }
+ * GET /api/rooms/{session_id}/summary
+ * Returns { session_id, status, meeting_time_iso?, summary, decisions[], tasks[] }
  */
-export async function getSummary(meetCode) {
+export async function getSummary(sessionId) {
   if (USE_MOCK) {
     await wait(400)
     mockSummaryCalls += 1
     return mockSummaryCalls < 3 ? MOCK_SUMMARY_PROCESSING : MOCK_SUMMARY
   }
-  return request(`/api/rooms/${encodeURIComponent(meetCode)}/summary`)
+  return request(`/api/rooms/${encodeURIComponent(sessionId)}/summary`)
 }
 
 /**
- * POST /api/rooms/{meet_code}/tasks/confirm  (contract §3.7)
+ * POST /api/rooms/{session_id}/tasks/confirm
  * tasks:   [{ id, task_description, assignee, due_date_iso, priority }]
  * targets: ["google_calendar", "notion", ...]
- * Returns { meet_code, synced_count, results: [{ task_id, target, status }] }
+ * Returns { session_id, synced_count, results: [{ task_id, target, status }] }
  */
-export async function confirmTasks(meetCode, tasks, targets) {
+export async function confirmTasks(sessionId, tasks, targets) {
   if (USE_MOCK) {
     await wait(600)
     const results = tasks.flatMap((task) =>
       targets.map((target) => ({ task_id: task.id, target, status: 'synced' })),
     )
-    return { meet_code: meetCode, synced_count: tasks.length, results }
+    return { session_id: sessionId, synced_count: tasks.length, results }
   }
-  return request(`/api/rooms/${encodeURIComponent(meetCode)}/tasks/confirm`, {
+  return request(`/api/rooms/${encodeURIComponent(sessionId)}/tasks/confirm`, {
     method: 'POST',
     body: JSON.stringify({ targets, tasks }),
   })

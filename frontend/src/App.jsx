@@ -51,7 +51,7 @@ export default function App() {
         />
       )
     case 'summary':
-      return <MeetingResultPanel meetCode="abc-defg-hij" />
+      return <MeetingResultPanel sessionId="f89c1282-c45d-45b7-b3fe-1c098aa0f1c3" />
     default:
       return <HomeScreen onJoin={() => setScreen('prejoin')} onCreate={() => setScreen('create')} />
   }

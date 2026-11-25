@@ -20,7 +20,8 @@ engine = create_engine(DATABASE_URL, echo=False)
 
 class MeetingSession(SQLModel, table=True):
     session_id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    meet_code: str = Field(index=True)
+    meet_code: Optional[str] = Field(default=None, index=True)
+    title: Optional[str] = None # Được AI tạo sau khi xong cuộc họp
     host_name: str
     host_token: str
     status: str = Field(default=STATUS_ACTIVE)
@@ -31,8 +32,8 @@ class MeetingSession(SQLModel, table=True):
 class TranscriptEntry(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     session_id: str = Field(foreign_key="meetingsession.session_id", index=True)
-    user_id: str
-    user_name: str # if google auth 
+    user_id: str # if google auth thi luu id google vao dau tot hon va tao bang user han hoi
+    user_name: Optional[str] = None
     timestamp_ms: float
     text: str
     source: str = Field(default=SRC_VOICE)
@@ -41,7 +42,7 @@ class TaskEntry(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     session_id: str = Field(foreign_key="meetingsession.session_id", index=True)
     task_description: str
-    assignee: str
+    assignee: Optional[str] = None
     due_date_iso: Optional[str] = None
     priority: str = Field(default="medium")  # "low" | "medium" | "high"
     status: str = Field(default="draft")     # "draft" | "confirmed" | "synced"
@@ -64,7 +65,11 @@ def init_db() -> None:
     SQLModel.metadata.create_all(engine)
 
 
-def create_session(meet_code: str, host_name: str, host_token: str) -> MeetingSession:
+def create_session(
+    host_name: str,
+    host_token: str,
+    meet_code: Optional[str] = None,
+) -> MeetingSession:
     """Insert a new active MeetingSession and return it."""
     session = MeetingSession(
         meet_code=meet_code,
@@ -87,7 +92,16 @@ def get_active_session_by_code(meet_code: str) -> Optional[MeetingSession]:
     )
     
     with Session(engine) as db:
+        return db.exec(query).first() 
+
+def get_session(session_id: str) -> Optional[MeetingSession]:
+    query = select(MeetingSession).where(
+            MeetingSession.session_id == session_id,
+    )
+    
+    with Session(engine) as db:
         return db.exec(query).first()
+
 
 def update_session_status(session_id: str, new_status: str) -> Optional[MeetingSession]:
     
@@ -255,13 +269,13 @@ def get_task(task_id: int) -> Optional[TaskEntry]:
 
 
 def update_task(task_id: int, **fields) -> Optional[TaskEntry]:
-    """Cap nhat mot task; bo qua cac truong None."""
+    """Cap nhat mot task; cho phep gan None cho cac truong nullable."""
     with Session(engine) as db:
         task = db.get(TaskEntry, task_id)
         if task is None:
             return None
         for key, value in fields.items():
-            if value is not None and hasattr(task, key):
+            if hasattr(task, key):
                 setattr(task, key, value)
         db.add(task)
         db.commit()

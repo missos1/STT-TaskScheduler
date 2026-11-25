@@ -115,37 +115,37 @@ class LLMWrapper:
         return MeetingAnalysis.model_validate_json(_clean_json_response(raw_text))
 
 
-if __name__ == "__main__":
-    # Quick standalone test: python -m backend.src.LLM_Wrapper.llm_wrapper
-    now_ms = datetime.now(VN_TZ).timestamp() * 1000
-    sample_entries = [
-        TranscriptEntry(
-            session_id="test",
-            user_id="u1",
-            user_name="Alice",
-            timestamp_ms=now_ms,
-            text="Hôm nay mình chốt dùng FastAPI và SQLite cho bản demo nhé.",
-            source="voice",
-        ),
-        TranscriptEntry(
-            session_id="test",
-            user_id="u2",
-            user_name="Minh Anh",
-            timestamp_ms=now_ms + 5000,
-            text="Ok, chiều mai trước 5 giờ mình sẽ gửi bản thiết kế UI lên Figma.",
-            source="voice",
-        ),
-        TranscriptEntry(
-            session_id="test",
-            user_id="u1",
-            user_name="Alice",
-            timestamp_ms=now_ms + 9000,
-            text="Còn Hùng lo giúp mình phần kết nối WebSocket trước thứ Sáu tuần này nha.",
-            source="chat",
-        ),
-    ]
+# if __name__ == "__main__":
+#     # Quick standalone test: python -m backend.src.LLM_Wrapper.llm_wrapper
+#     now_ms = datetime.now(VN_TZ).timestamp() * 1000
+#     sample_entries = [
+#         TranscriptEntry(
+#             session_id="test",
+#             user_id="u1",
+#             user_name="Alice",
+#             timestamp_ms=now_ms,
+#             text="Hôm nay mình chốt dùng FastAPI và SQLite cho bản demo nhé.",
+#             source="voice",
+#         ),
+#         TranscriptEntry(
+#             session_id="test",
+#             user_id="u2",
+#             user_name="Minh Anh",
+#             timestamp_ms=now_ms + 5000,
+#             text="Ok, chiều mai trước 5 giờ mình sẽ gửi bản thiết kế UI lên Figma.",
+#             source="voice",
+#         ),
+#         TranscriptEntry(
+#             session_id="test",
+#             user_id="u1",
+#             user_name="Alice",
+#             timestamp_ms=now_ms + 9000,
+#             text="Còn Hùng lo giúp mình phần kết nối WebSocket trước thứ Sáu tuần này nha.",
+#             source="chat",
+#         ),
+#     ]
 
-    wrapper = LLMWrapper()
-    result = wrapper.analyze_meeting(sample_entries)
-    print(result.model_dump_json(indent=2))
+#     wrapper = LLMWrapper()
+#     result = wrapper.analyze_meeting(sample_entries)
+#     print(result.model_dump_json(indent=2))
 

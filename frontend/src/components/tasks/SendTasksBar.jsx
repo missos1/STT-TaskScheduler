@@ -6,9 +6,9 @@ import { toConfirmPayload } from './taskFormat'
 /**
  * Sticky footer: pick targets, then send every approved task in ONE call
  * to POST /tasks/confirm.
- * Props: meetCode, tasks (approved, not yet synced), pendingCount, onSent(results)
+ * Props: sessionId, tasks (approved, not yet synced), pendingCount, onSent(results)
  */
-export default function SendTasksBar({ meetCode, tasks, pendingCount, onSent }) {
+export default function SendTasksBar({ sessionId, tasks, pendingCount, onSent }) {
   const [targets, setTargets] = useState(['google_calendar'])
   const [sending, setSending] = useState(false)
   const [message, setMessage] = useState(null) // { kind: "ok" | "error", text }
@@ -26,7 +26,7 @@ export default function SendTasksBar({ meetCode, tasks, pendingCount, onSent }) 
     setSending(true)
     setMessage(null)
     try {
-      const response = await confirmTasks(meetCode, tasks.map(toConfirmPayload), targets)
+      const response = await confirmTasks(sessionId, tasks.map(toConfirmPayload), targets)
       onSent(response.results)
       setMessage({ kind: 'ok', text: `Đã gửi ${response.synced_count} việc.` })
     } catch {

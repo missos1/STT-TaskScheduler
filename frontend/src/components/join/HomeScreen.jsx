@@ -19,7 +19,7 @@ export default function HomeScreen({ userName = 'Hoàng', onJoin, onCreate }) {
         <input
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
-          placeholder="K7Q-24M"
+          placeholder=""
           className="mt-1 w-full rounded-lg border border-emerald-700 bg-white px-4 py-3 text-2xl font-bold tracking-widest"
         />
         <button
