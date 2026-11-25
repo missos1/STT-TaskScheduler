@@ -21,7 +21,7 @@ engine = create_engine(DATABASE_URL, echo=False)
 class MeetingSession(SQLModel, table=True):
     session_id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     meet_code: Optional[str] = Field(default=None, index=True)
-    title: Optional[str] = None # Được AI tạo sau khi xng cuộc họp
+    title: Optional[str] = None # Được AI tạo sau khi xong cuộc họp
     host_name: str
     host_token: str
     status: str = Field(default=STATUS_ACTIVE)
@@ -32,8 +32,8 @@ class MeetingSession(SQLModel, table=True):
 class TranscriptEntry(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     session_id: str = Field(foreign_key="meetingsession.session_id", index=True)
-    user_id: str
-    user_name: str # if google auth 
+    user_id: str # if google auth thi luu id google vao dau tot hon va tao bang user han hoi
+    user_name: Optional[str] = None
     timestamp_ms: float
     text: str
     source: str = Field(default=SRC_VOICE)
