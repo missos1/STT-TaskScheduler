@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import useRecorder from '../../hooks/useRecorder'
+import { connect, sendAudio, disconnect } from '../../services/socket'
 
 const MOCK_LINES = [
   { id: 1, speaker: 'An', text: 'Tuần này Hoàng làm giao diện đăng nhập nhé, thứ Sáu demo cho cả nhóm.', time: '02:15' },
@@ -15,23 +16,41 @@ export default function RecordingScreen({
   title = 'Họp đồ án – Sprint 2',
   isHost = false,
   deviceId = '',
+  code = '6bdef925-fd54-4cad-b597-138ba56803f4',
+  userId = 'u-hoang',
+  userName = 'Hoàng',
   onStop,
   onLeave,
 }) {
   const [seconds, setSeconds] = useState(0)
   const [lines, setLines] = useState([])
   const [bytes, setBytes] = useState(0)
+  const [wsState, setWsState] = useState('đang kết nối')
   const endRef = useRef(null)
 
   const { recording, error, start, stop } = useRecorder({
     deviceId,
-    onChunk: (buf) => setBytes((b) => b + buf.byteLength), // sau này: gửi WebSocket ở đây
+    onChunk: (buf) => {
+      setBytes((b) => b + buf.byteLength)
+      sendAudio(buf)
+    },
   })
 
-  // Tự bật thu khi vào màn, tắt khi rời màn
+  // Kết nối server và bật thu khi vào màn; dọn dẹp khi rời màn
   useEffect(() => {
+    connect({
+      code,
+      userId,
+      userName,
+      onOpen: () => setWsState('đã kết nối'),
+      onClose: () => setWsState('mất kết nối'),
+      onError: (m) => setWsState(m),
+    })
     start()
-    return () => stop()
+    return () => {
+      stop()
+      disconnect()
+    }
   }, []) // eslint-disable-line
 
   useEffect(() => {
@@ -65,6 +84,7 @@ export default function RecordingScreen({
           <p className="text-xs text-stone-400">
             {error ? `Lỗi mic: ${error}` : recording ? `Đã thu ${(bytes / 1024).toFixed(0)} KB` : 'Chưa thu'}
           </p>
+          <p className="text-xs text-stone-400">Server: {wsState}</p>
         </div>
         {isHost ? (
           <button onClick={onStop} className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm">

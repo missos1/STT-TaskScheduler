@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ServerSetting from '../common/ServerSetting'
 
 const RECENT = [
   { id: 1, title: 'Họp đồ án – Sprint 1', date: '07/11', note: '2 việc của bạn' },
@@ -61,6 +62,7 @@ export default function HomeScreen({ userName = 'Hoàng', onJoin, onCreate }) {
           ))}
         </ul>
       </section>
+      <ServerSetting />
     </div>
   )
 }
